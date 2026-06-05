@@ -1,6 +1,13 @@
 import os
-from serpapi import GoogleSearch
-import streamlit as st
+import sys
+# 嘗試多種導入路徑
+try:
+    from serpapi import GoogleSearch
+except ImportError:
+    try:
+        from google_search_results import GoogleSearch
+    except ImportError:
+        raise ImportError("無法找到 serpapi 套件，請確認 requirements.txt 已正確包含 serpapi")
 
 def get_hotel_prices(hotel_name, check_in="2026-07-01"):
     # 從 Streamlit Secrets 讀取金鑰
