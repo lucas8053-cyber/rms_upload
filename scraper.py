@@ -3,7 +3,6 @@ import streamlit as st
 from datetime import datetime, timedelta
 
 def get_hotel_prices(hotel_name):
-    # 設定日期
     today = datetime.now().strftime("%Y-%m-%d")
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     
@@ -12,10 +11,9 @@ def get_hotel_prices(hotel_name):
         return []
 
     url = "https://serpapi.com/search"
-    # 確保這裡的每一個參數都縮排 4 個空格
     params = {
         "engine": "google_hotels",
-        "q": hotel_name + " 台灣",
+        "q": hotel_name,
         "check_in_date": today,
         "check_out_date": tomorrow,
         "api_key": api_key,
@@ -27,18 +25,20 @@ def get_hotel_prices(hotel_name):
     
     try:
         response = requests.get(url, params=params)
-        response.raise_for_status()
         data = response.json()
         
         prices = []
         if "hotels_results" in data:
             for hotel in data["hotels_results"]:
-                rate = hotel.get("rate_per_night", {})
-                price = rate.get("lowest")
+                # 彈性抓取路徑：有些在 rate_per_night，有些在 total_rate
+                rate_info = hotel.get("rate_per_night") or hotel.get("total_rate") or {}
+                price = rate_info.get("extracted_lowest") or rate_info.get("lowest")
+                
                 if price:
+                    # 確保是數字
                     clean_price = int(str(price).replace(',', '').replace('$', ''))
                     prices.append({
-                        "hotel_name": hotel.get("name"),
+                        "hotel_name": hotel.get("name", hotel_name),
                         "ota_price": clean_price,
                         "date": today
                     })
