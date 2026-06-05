@@ -13,14 +13,16 @@ def get_hotel_prices(hotel_name):
     if not api_key: return []
 
     url = "https://serpapi.com/search"
-    params = {
+params = {
         "engine": "google_hotels",
-        "q": hotel_name,
+        "q": hotel_name + " 台灣",  # 強制在關鍵字後加上「台灣」
         "check_in_date": today,
         "check_out_date": tomorrow,
         "api_key": api_key,
         "currency": "TWD",
-        "hl": "zh-tw"
+        "hl": "zh-tw",
+        "gl": "tw",            # 強制地理區域為台灣
+        "location": "Taiwan"   # 明確要求定位在台灣
     }
     # ... (後續解析代碼與之前相同)
     
