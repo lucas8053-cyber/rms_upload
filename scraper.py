@@ -16,7 +16,8 @@ def get_hotel_prices(hotel_name, check_in="2026-07-01"):
         "api_key": api_key,
         "currency": "TWD",
         "hl": "zh-tw",
-        "gl": "tw"
+        "gl": "tw",          # 強制設定搜尋區域為台灣
+        "location": "Taiwan" # 顯式宣告地點為台灣
     }
     
     try:
