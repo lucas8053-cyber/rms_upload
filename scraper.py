@@ -13,37 +13,47 @@ def get_hotel_prices(hotel_name):
     url = "https://serpapi.com/search"
     params = {
         "engine": "google_hotels",
-        "q": hotel_name,           # 直接使用原始名稱，不要加"台灣"
+        "q": hotel_name,
         "check_in_date": today,
         "check_out_date": tomorrow,
         "api_key": api_key,
         "currency": "TWD",
-        "hl": "zh-tw",             # 繁體中文
-        "gl": "tw",                # 【關鍵】強制設為台灣地區
-        "location": "Taiwan"       # 【關鍵】明確範圍限制在台灣
+        "hl": "zh-tw",
+        "gl": "tw",
+        "location": "Taiwan"
     }
     
-   try:
+    try:
         response = requests.get(url, params=params)
         data = response.json()
         
         prices = []
         
-        # 邏輯 1: 如果是搜尋列表頁 (hotels_results)
+        # 處理資料解析
         if "hotels_results" in data:
             for hotel in data["hotels_results"]:
                 rate = hotel.get("rate_per_night", {}) or hotel.get("total_rate", {})
-                price = rate.get("extracted_lowest") or rate.get("lowest")
-                if price:
-                    prices.append({"hotel_name": hotel.get("name"), "ota_price": int(price), "date": today})
+                price_raw = rate.get("extracted_lowest") or rate.get("lowest")
+                if price_raw:
+                    # 處理價格字串轉數字，移除逗號和貨幣符號
+                    price_str = str(price_raw).replace(',', '').replace('$', '').replace('NT', '')
+                    prices.append({
+                        "hotel_name": hotel.get("name"), 
+                        "ota_price": int(float(price_str)), 
+                        "date": today
+                    })
         
-        # 邏輯 2: 如果是單一飯店詳細資訊頁 (直接回傳的屬性)
-        elif "type" in data and data["type"] == "hotel":
+        elif data.get("type") == "hotel":
             rate = data.get("rate_per_night", {}) or data.get("total_rate", {})
-            price = rate.get("extracted_lowest") or rate.get("lowest")
-            if price:
-                prices.append({"hotel_name": data.get("name"), "ota_price": int(price), "date": today})
-                
+            price_raw = rate.get("extracted_lowest") or rate.get("lowest")
+            if price_raw:
+                price_str = str(price_raw).replace(',', '').replace('$', '').replace('NT', '')
+                prices.append({
+                    "hotel_name": data.get("name"), 
+                    "ota_price": int(float(price_str)), 
+                    "date": today
+                })
+        
         return prices
     except Exception as e:
         st.error(f"解析錯誤: {e}")
