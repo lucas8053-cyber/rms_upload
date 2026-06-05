@@ -59,14 +59,14 @@ if os.path.exists(DB_PATH):
             "is_main_room_type": "是否主力", "suggested_price": "建議售價",
             "price_delta": "價格偏差值", "strategy_note": "策略建議"
         })
-        # 新增：市場價格趨勢圖
+       # 新增：市場價格趨勢圖
         st.subheader("📊 市場價格動態趨勢")
         if not df.empty:
-        # 建立一個樞紐表，適合畫折線圖
-        pivot_df = df.pivot_table(index='date', columns='hotel_name', values='ota_price')
-        st.line_chart(pivot_df)
-    else:
-        st.write("尚無足夠歷史數據繪製趨勢圖。")
+            # 確保下一行有正確的 4 個空白或是 1 個 Tab 縮排
+            pivot_df = df.pivot_table(index='date', columns='hotel_name', values='ota_price')
+            st.line_chart(pivot_df)
+        else:
+            st.write("尚無足夠歷史數據繪製趨勢圖。")
         st.dataframe(display_df, use_container_width=True)
     else:
         st.info("目前無數據，請點擊左側同步按鈕以載入數據。")
