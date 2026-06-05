@@ -1,5 +1,5 @@
 import os
-from serpapi import GoogleSearch
+from google_search_results import GoogleSearch
 import streamlit as st
 
 def get_hotel_prices(hotel_name, check_in="2026-07-01"):
