@@ -1,35 +1,53 @@
-import os
-import sys
-# 嘗試多種導入路徑
-try:
-    from serpapi import GoogleSearch
-except ImportError:
-    try:
-        from google_search_results import GoogleSearch
-    except ImportError:
-        raise ImportError("無法找到 serpapi 套件，請確認 requirements.txt 已正確包含 serpapi")
+import requests
+import streamlit as st
+import pandas as pd
 
 def get_hotel_prices(hotel_name, check_in="2026-07-01"):
-    # 從 Streamlit Secrets 讀取金鑰
+    """
+    直接呼叫 SerpApi 的 Google Hotels API，無需安裝 serpapi 套件
+    """
+    # 從 Streamlit Cloud 的 Secrets 讀取 API 金鑰
     api_key = st.secrets.get("SERPAPI_KEY")
     
+    if not api_key:
+        st.error("系統未找到 SERPAPI_KEY，請確認在 Streamlit Secrets 中設定正確。")
+        return []
+
+    # API 請求設定
+    url = "https://serpapi.com/search"
     params = {
         "engine": "google_hotels",
         "q": hotel_name,
         "check_in_date": check_in,
-        "api_key": api_key
+        "api_key": api_key,
+        "currency": "TWD",
+        "hl": "zh-tw"  # 指定回傳繁體中文資訊
     }
     
-    search = GoogleSearch(params)
-    results = search.get_dict()
-    
-    # 提取價格數據
-    prices = []
-    if "hotels_results" in results:
-        for hotel in results["hotels_results"]:
-            prices.append({
-                "hotel_name": hotel.get("name"),
-                "ota_price": hotel.get("rate_per_night", {}).get("lowest"),
-                "date": check_in
-            })
-    return prices
+    try:
+        # 發送請求
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # 檢查是否請求成功
+        results = response.json()
+        
+        # 解析數據
+        prices = []
+        if "hotels_results" in results:
+            for hotel in results["hotels_results"]:
+                # 取得房價 (如果無法取得則設為 None)
+                rate = hotel.get("rate_per_night", {})
+                price = rate.get("lowest") if isinstance(rate, dict) else None
+                
+                prices.append({
+                    "hotel_name": hotel.get("name"),
+                    "ota_price": price,
+                    "date": check_in
+                })
+        return prices
+        
+    except requests.exceptions.RequestException as e:
+        st.error(f"API 連線錯誤: {e}")
+        return []
+    except Exception as e:
+        st.error(f"數據解析錯誤: {e}")
+        return []
