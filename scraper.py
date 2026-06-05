@@ -23,26 +23,28 @@ def get_hotel_prices(hotel_name):
         "location": "Taiwan"       # 【關鍵】明確範圍限制在台灣
     }
     
-    try:
+   try:
         response = requests.get(url, params=params)
         data = response.json()
         
         prices = []
-        st.write(data)
+        
+        # 邏輯 1: 如果是搜尋列表頁 (hotels_results)
         if "hotels_results" in data:
             for hotel in data["hotels_results"]:
-                # 彈性抓取路徑：有些在 rate_per_night，有些在 total_rate
-                rate_info = hotel.get("rate_per_night") or hotel.get("total_rate") or {}
-                price = rate_info.get("extracted_lowest") or rate_info.get("lowest")
-                
+                rate = hotel.get("rate_per_night", {}) or hotel.get("total_rate", {})
+                price = rate.get("extracted_lowest") or rate.get("lowest")
                 if price:
-                    # 確保是數字
-                    clean_price = int(str(price).replace(',', '').replace('$', ''))
-                    prices.append({
-                        "hotel_name": hotel.get("name", hotel_name),
-                        "ota_price": clean_price,
-                        "date": today
-                    })
+                    prices.append({"hotel_name": hotel.get("name"), "ota_price": int(price), "date": today})
+        
+        # 邏輯 2: 如果是單一飯店詳細資訊頁 (直接回傳的屬性)
+        elif "type" in data and data["type"] == "hotel":
+            rate = data.get("rate_per_night", {}) or data.get("total_rate", {})
+            price = rate.get("extracted_lowest") or rate.get("lowest")
+            if price:
+                prices.append({"hotel_name": data.get("name"), "ota_price": int(price), "date": today})
+                
         return prices
     except Exception as e:
+        st.error(f"解析錯誤: {e}")
         return []
