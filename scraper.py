@@ -2,14 +2,13 @@ import requests
 import streamlit as st
 
 def get_hotel_prices(hotel_name, check_in="2026-07-01"):
-    """
-    使用 requests 呼叫 SerpApi，確保參數傳遞正確
-    """
+    # 從 Streamlit Secrets 讀取 API Key
     api_key = st.secrets.get("SERPAPI_KEY")
     if not api_key:
         return []
 
-    url = "https://serpapi.com/search.json"
+    # 直接呼叫 API 端點
+    url = "https://serpapi.com/search"
     params = {
         "engine": "google_hotels",
         "q": hotel_name,
@@ -22,25 +21,25 @@ def get_hotel_prices(hotel_name, check_in="2026-07-01"):
     
     try:
         response = requests.get(url, params=params)
-        # 這裡會拋出詳細的錯誤訊息，方便我們偵錯
-        response.raise_for_status() 
-        results = response.json()
+        response.raise_for_status()
+        data = response.json()
         
         prices = []
-        # Google Hotels API 的回傳格式有時是 search_parameters 下，有時是 hotels_results
-        if "hotels_results" in results:
-            for hotel in results["hotels_results"]:
+        # 從 Google Hotels 回傳結構中提取資料
+        if "hotels_results" in data:
+            for hotel in data["hotels_results"]:
                 rate = hotel.get("rate_per_night", {})
-                price = rate.get("lowest") if isinstance(rate, dict) else None
+                price = rate.get("lowest")
                 if price:
+                    # 將價格字串轉換為數字
+                    clean_price = int(str(price).replace(',', '').replace('$', ''))
                     prices.append({
                         "hotel_name": hotel.get("name"),
-                        "ota_price": int(price.replace(',', '')), # 將價格轉為數字
+                        "ota_price": clean_price,
                         "date": check_in
                     })
         return prices
-        
     except Exception as e:
-        # 在 UI 顯示錯誤，但程式不會崩潰
-        st.error(f"API 抓取失敗 ({hotel_name}): {e}")
+        # 將錯誤顯示在頁面上供您參考
+        st.error(f"API 請求錯誤: {str(e)}")
         return []
