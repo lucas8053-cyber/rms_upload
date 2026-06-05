@@ -29,6 +29,10 @@ def get_hotel_prices(hotel_name):
         response.raise_for_status()
         data = response.json()
         
+        # --- 新增這行來檢查 ---
+        st.write("API 回傳原始數據:", data) 
+        # ---------------------
+        
         prices = []
         if "hotels_results" in data:
             for hotel in data["hotels_results"]:
