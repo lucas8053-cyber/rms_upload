@@ -1,28 +1,28 @@
-﻿import pandas as pd
-import sqlite3
-import random
 import os
-from database_manager import save_scraped_data
+from serpapi import GoogleSearch
+import streamlit as st
 
-def get_monitored_hotels():
-    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hotel_rms.db')
-    conn = sqlite3.connect(DB_PATH)
-    hotels = pd.read_sql_query("SELECT hotel_name FROM monitored_hotels", conn)
-    conn.close()
-    return hotels['hotel_name'].tolist()
-
-def run_scraper():
-    competitors = get_monitored_hotels()
-    data = []
-    room_types = ["Standard", "Deluxe", "Suite"]
+def get_hotel_prices(hotel_name, check_in="2026-07-01"):
+    # 從 Streamlit Secrets 讀取金鑰
+    api_key = st.secrets.get("SERPAPI_KEY")
     
-    for hotel in competitors:
-        for room in room_types:
-            price = 2500 + (len(hotel) * 20) + (room_types.index(room) * 1000)
-            data.append({
-               "date": "2026-06-05", "hotel_name": hotel, "room_type": room, 
-               "ota_price": price, "google_search_volume": random.randint(50, 100),
-               "is_main_room_type": 0, "suggested_price": price
+    params = {
+        "engine": "google_hotels",
+        "q": hotel_name,
+        "check_in_date": check_in,
+        "api_key": api_key
+    }
+    
+    search = GoogleSearch(params)
+    results = search.get_dict()
+    
+    # 提取價格數據
+    prices = []
+    if "hotels_results" in results:
+        for hotel in results["hotels_results"]:
+            prices.append({
+                "hotel_name": hotel.get("name"),
+                "ota_price": hotel.get("rate_per_night", {}).get("lowest"),
+                "date": check_in
             })
-    df = pd.DataFrame(data)
-    save_scraped_data(df)
+    return prices
