@@ -15,15 +15,17 @@ def get_hotel_prices(hotel_name, check_in="2026-07-01"):
         "check_in_date": check_in,
         "api_key": api_key,
         "currency": "TWD",
-        "hl": "zh-tw",
-        "gl": "tw",          # 強制設定搜尋區域為台灣
-        "location": "Taiwan" # 顯式宣告地點為台灣
+        "hl": "zh-tw"
     }
     
     try:
         response = requests.get(url, params=params)
-        response.raise_for_status()
+        if response.status_code != 200:
+            # 這會把 Google 回傳的詳細錯誤內容印在 Streamlit 的頁面上
+            st.error(f"API 詳細錯誤內容: {response.text}")
+            return []
         data = response.json()
+        # ... (後續解析代碼不變)
         
         prices = []
         # 從 Google Hotels 回傳結構中提取資料
