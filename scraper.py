@@ -13,14 +13,14 @@ def get_hotel_prices(hotel_name):
     url = "https://serpapi.com/search"
     params = {
         "engine": "google_hotels",
-        "q": hotel_name,
+        "q": hotel_name,           # 直接使用原始名稱，不要加"台灣"
         "check_in_date": today,
         "check_out_date": tomorrow,
         "api_key": api_key,
         "currency": "TWD",
-        "hl": "zh-tw",
-        "gl": "tw",
-        "location": "Taiwan"
+        "hl": "zh-tw",             # 繁體中文
+        "gl": "tw",                # 【關鍵】強制設為台灣地區
+        "location": "Taiwan"       # 【關鍵】明確範圍限制在台灣
     }
     
     try:
@@ -28,6 +28,7 @@ def get_hotel_prices(hotel_name):
         data = response.json()
         
         prices = []
+        st.write(data)
         if "hotels_results" in data:
             for hotel in data["hotels_results"]:
                 # 彈性抓取路徑：有些在 rate_per_night，有些在 total_rate
