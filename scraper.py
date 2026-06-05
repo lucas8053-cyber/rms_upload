@@ -25,36 +25,28 @@ def get_hotel_prices(hotel_name):
     
     try:
         response = requests.get(url, params=params)
+        response.raise_for_status()
         data = response.json()
         
         prices = []
         
-        # 處理資料解析
+        # 處理搜尋列表頁 (hotels_results)
         if "hotels_results" in data:
             for hotel in data["hotels_results"]:
                 rate = hotel.get("rate_per_night", {}) or hotel.get("total_rate", {})
                 price_raw = rate.get("extracted_lowest") or rate.get("lowest")
                 if price_raw:
-                    # 處理價格字串轉數字，移除逗號和貨幣符號
                     price_str = str(price_raw).replace(',', '').replace('$', '').replace('NT', '')
-                    prices.append({
-                        "hotel_name": hotel.get("name"), 
-                        "ota_price": int(float(price_str)), 
-                        "date": today
-                    })
+                    prices.append({"hotel_name": hotel.get("name"), "ota_price": int(float(price_str)), "date": today})
         
+        # 處理單一飯店詳細頁 (type: hotel)
         elif data.get("type") == "hotel":
             rate = data.get("rate_per_night", {}) or data.get("total_rate", {})
             price_raw = rate.get("extracted_lowest") or rate.get("lowest")
             if price_raw:
                 price_str = str(price_raw).replace(',', '').replace('$', '').replace('NT', '')
-                prices.append({
-                    "hotel_name": data.get("name"), 
-                    "ota_price": int(float(price_str)), 
-                    "date": today
-                })
-        
+                prices.append({"hotel_name": data.get("name"), "ota_price": int(float(price_str)), "date": today})
+                
         return prices
     except Exception as e:
-        st.error(f"解析錯誤: {e}")
         return []
