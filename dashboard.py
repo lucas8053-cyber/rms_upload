@@ -28,7 +28,10 @@ if 'data' in st.session_state and not st.session_state['data'].empty:
     
     display_df = df[df['room_type'].isin(selected_rooms)]
     
-    # 資料呈現 (表格)
+    st.subheader("原始數據診斷")
+    st.write(df) # 這會把整個 DataFrame 顯示出來，包含原始名稱
+    
+    st.subheader("分類後的數據表")
     st.dataframe(display_df.rename(columns={
         'hotel_name': '飯店', 
         'ota_source': '訂房通路', 
