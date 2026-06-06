@@ -1,16 +1,13 @@
 import requests
 import streamlit as st
 from datetime import datetime, timedelta
-from mapper import map_room_type  # 確保 mapper.py 在同目錄
+from mapper import map_room_type
 
 def get_hotel_prices(hotel_name):
     today = datetime.now().strftime("%Y-%m-%d")
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     
     api_key = st.secrets.get("SERPAPI_KEY")
-    if not api_key:
-        return []
-
     url = "https://serpapi.com/search"
     params = {
         "engine": "google_hotels",
@@ -19,15 +16,17 @@ def get_hotel_prices(hotel_name):
         "check_out_date": tomorrow,
         "api_key": api_key,
         "currency": "TWD",
-        "hl": "en",  # 強制英文解析以獲取精確房型單字
+        "hl": "en",
         "gl": "us",
         "location": "Taiwan"
     }
     
     try:
         response = requests.get(url, params=params)
-        response.raise_for_status()
         data = response.json()
+        
+        # 除錯：直接將原始資料印出來看一下結構，方便找出價格欄位
+        # st.write(data.get("hotels_results", [data])[0]) 
         
         prices = []
         hotel_data = data.get("hotels_results", [data])[0] if "hotels_results" in data else data
@@ -35,34 +34,41 @@ def get_hotel_prices(hotel_name):
         if "prices" in hotel_data:
             for source in hotel_data["prices"]:
                 ota_name = source.get("source")
-                rooms = source.get("rooms", [])
                 
-                # 如果有明確的房型列表
-                if rooms:
-                    for room in rooms:
-                        room_name = room.get("name", "Standard")
-                        price = room.get("rate_per_night", {}).get("extracted_lowest")
+                # 遍歷可能的價格位置 (有些在 rates，有些在 rooms)
+                items = source.get("rooms", []) or source.get("rates", [])
+                
+                if items:
+                    for item in items:
+                        name = item.get("name", "Standard")
+                        # 這是最關鍵的部分：我們印出每一個 item 試試
+                        rate_info = item.get("rate_per_night", {})
+                        price = rate_info.get("extracted_lowest")
+                        
+                        # 增加一個備用方案：有時候價格在 source 本身
+                        if not price:
+                            price = source.get("rate_per_night", {}).get("extracted_lowest")
+
                         if price:
                             prices.append({
                                 "hotel_name": hotel_data.get("name", hotel_name),
                                 "ota_source": ota_name,
-                                "room_type": map_room_type(room_name), # 透過 mapper 分類
+                                "room_type": map_room_type(name),
                                 "ota_price": int(price),
                                 "date": today
                             })
                 else:
-                    # 沒有房型列表時，嘗試抓取基礎價格並歸類為標準房
-                    price_raw = source.get("rate_per_night", {}).get("extracted_lowest")
-                    if price_raw:
+                    #  fallback
+                    price = source.get("rate_per_night", {}).get("extracted_lowest")
+                    if price:
                         prices.append({
                             "hotel_name": hotel_data.get("name", hotel_name),
                             "ota_source": ota_name,
-                            "room_type": "標準房", 
-                            "ota_price": int(price_raw),
+                            "room_type": "Standard",
+                            "ota_price": int(price),
                             "date": today
                         })
         return prices
     except Exception as e:
-        # 顯示錯誤以便除錯
-        st.error(f"Scraper Error: {e}")
+        st.error(f"解析發生錯誤: {e}")
         return []
