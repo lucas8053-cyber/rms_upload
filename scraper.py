@@ -7,8 +7,7 @@ def get_hotel_prices(hotel_name):
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     
     api_key = st.secrets.get("SERPAPI_KEY")
-    if not api_key:
-        return []
+    if not api_key: return []
 
     url = "https://serpapi.com/search"
     params = {
@@ -31,38 +30,24 @@ def get_hotel_prices(hotel_name):
         prices = []
         hotel_data = data.get("hotels_results", [data])[0] if "hotels_results" in data else data
         
-    if "prices" in hotel_data:
+        if "prices" in hotel_data:
             for source in hotel_data["prices"]:
                 ota_name = source.get("source")
-                # 嘗試抓取更多層級的資訊
+                # 策略：優先找 rooms，沒有則找 rates 內的 inclusions，最後才抓總價
                 rooms = source.get("rooms", [])
-                
-                # 若找不到 rooms，嘗試抓取是否有更細節的 description
-                if not rooms and "room_type" in source:
-                     rooms = [{"name": source.get("room_type")}]
                 
                 if rooms:
                     for room in rooms:
-                        price = room.get("rate_per_night", {}).get("extracted_lowest") or source.get("rate_per_night", {}).get("extracted_lowest")
+                        room_name = room.get("name", "標準房型")
+                        price = room.get("rate_per_night", {}).get("extracted_lowest")
                         if price:
-                            prices.append({
-                                "hotel_name": hotel_data.get("name", hotel_name),
-                                "ota_source": ota_name,
-                                "room_type": room.get("name", "未指定房型"),
-                                "ota_price": int(price),
-                                "date": today
-                            })
+                            prices.append({"hotel_name": hotel_data.get("name"), "ota_source": ota_name, "room_type": room_name, "ota_price": int(price), "date": today})
                 else:
-                    # 最後防線：若真的都沒有房型資料，回傳基本價格
-                    price_raw = source.get("rate_per_night", {}).get("extracted_lowest")
-                    if price_raw:
-                        prices.append({
-                            "hotel_name": hotel_data.get("name", hotel_name),
-                            "ota_source": ota_name,
-                            "room_type": "未指定房型",
-                            "ota_price": int(price_raw),
-                            "date": today
-                        })
+                    # 嘗試抓取 rate 資訊
+                    rate_info = source.get("rate_per_night", {})
+                    price = rate_info.get("extracted_lowest")
+                    if price:
+                        prices.append({"hotel_name": hotel_data.get("name"), "ota_source": ota_name, "room_type": "未細分房型", "ota_price": int(price), "date": today})
         return prices
     except Exception:
         return []
