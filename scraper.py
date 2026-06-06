@@ -31,7 +31,7 @@ def get_hotel_prices(hotel_name):
         prices = []
         hotel_data = data.get("hotels_results", [data])[0] if "hotels_results" in data else data
         
-if "prices" in hotel_data:
+    if "prices" in hotel_data:
             for source in hotel_data["prices"]:
                 ota_name = source.get("source")
                 # 嘗試抓取更多層級的資訊
