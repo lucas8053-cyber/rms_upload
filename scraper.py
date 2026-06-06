@@ -26,7 +26,12 @@ def get_hotel_prices(hotel_info):
     try:
         response = requests.get(url, params=params)
         data = response.json()
-        
+
+        # --- 診斷：若取不到資料，印出 API 回傳的關鍵資訊 ---
+        if "hotel_results" not in data and "hotels_results" not in data:
+            st.warning(f"{hotel_info['name']} 回傳了空結構，請檢查 Place ID 是否過舊。")
+            return []
+            
         def find_all_prices(obj, price_list):
             if isinstance(obj, dict):
                 if "extracted_lowest" in obj:
