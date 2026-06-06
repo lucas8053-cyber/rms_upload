@@ -68,6 +68,8 @@ def get_hotel_prices(hotel_info):
                             "價格 (TWD)": max(all_raw_prices),
                             "日期": today
                         })
+                        print(data)
+                        
         return prices
     except Exception as e:
         return []
