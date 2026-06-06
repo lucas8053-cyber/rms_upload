@@ -43,7 +43,7 @@ if 'price_data' in st.session_state and not st.session_state['price_data'].empty
     
     # 應用熱力圖樣式 (僅對價格欄位)
     st.dataframe(
-        display_df.style.applymap(highlight_price, subset=['價格 (TWD)']),
+        display_df.style.map(highlight_price, subset=['價格 (TWD)']),
         use_container_width=True
     )
     
