@@ -8,6 +8,8 @@ def get_hotel_prices(hotel_name):
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     
     api_key = st.secrets.get("SERPAPI_KEY")
+    if not api_key: return []
+
     url = "https://serpapi.com/search"
     params = {
         "engine": "google_hotels",
@@ -23,32 +25,21 @@ def get_hotel_prices(hotel_name):
     
     try:
         response = requests.get(url, params=params)
+        response.raise_for_status()
         data = response.json()
-        
-        # 除錯：直接將原始資料印出來看一下結構，方便找出價格欄位
-        # st.write(data.get("hotels_results", [data])[0]) 
-        
         prices = []
         hotel_data = data.get("hotels_results", [data])[0] if "hotels_results" in data else data
         
         if "prices" in hotel_data:
             for source in hotel_data["prices"]:
                 ota_name = source.get("source")
-                
-                # 遍歷可能的價格位置 (有些在 rates，有些在 rooms)
+                # 遍歷 rooms 或 rates
                 items = source.get("rooms", []) or source.get("rates", [])
                 
                 if items:
                     for item in items:
                         name = item.get("name", "Standard")
-                        # 這是最關鍵的部分：我們印出每一個 item 試試
-                        rate_info = item.get("rate_per_night", {})
-                        price = rate_info.get("extracted_lowest")
-                        
-                        # 增加一個備用方案：有時候價格在 source 本身
-                        if not price:
-                            price = source.get("rate_per_night", {}).get("extracted_lowest")
-
+                        price = item.get("rate_per_night", {}).get("extracted_lowest")
                         if price:
                             prices.append({
                                 "hotel_name": hotel_data.get("name", hotel_name),
@@ -58,7 +49,6 @@ def get_hotel_prices(hotel_name):
                                 "date": today
                             })
                 else:
-                    #  fallback
                     price = source.get("rate_per_night", {}).get("extracted_lowest")
                     if price:
                         prices.append({
@@ -70,5 +60,5 @@ def get_hotel_prices(hotel_name):
                         })
         return prices
     except Exception as e:
-        st.error(f"解析發生錯誤: {e}")
+        st.error(f"Scraper Error: {e}")
         return []
