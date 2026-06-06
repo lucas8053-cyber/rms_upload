@@ -9,6 +9,7 @@ def get_hotel_prices(hotel_name):
     api_key = st.secrets.get("SERPAPI_KEY")
     if not api_key: return []
 
+    TARGET_OTAS = ["agoda", "hotels.com", "booking.com", "expedia"]
     url = "https://serpapi.com/search"
     params = {
         "engine": "google_hotels",
@@ -27,7 +28,6 @@ def get_hotel_prices(hotel_name):
         response.raise_for_status()
         data = response.json()
         
-        # 深度搜尋函式：遞迴撈取 JSON 結構中所有名為 extracted_lowest 的價格
         def find_all_prices(obj, price_list):
             if isinstance(obj, dict):
                 if "extracted_lowest" in obj:
@@ -43,31 +43,29 @@ def get_hotel_prices(hotel_name):
         
         if "prices" in hotel_data:
             for source in hotel_data["prices"]:
-                ota_name = source.get("source")
-                all_raw_prices = []
+                ota_name = source.get("source", "").lower()
                 
-                # 強制啟動深度搜尋
-                find_all_prices(source, all_raw_prices)
-                
-                # 過濾掉極端離群值 (例如 < 500 元可能非正常房價)
-                all_raw_prices = [p for p in all_raw_prices if p > 500]
-                
-                if all_raw_prices:
-                    prices.append({
-                        "飯店": hotel_data.get("name", hotel_name),
-                        "訂房通路": ota_name,
-                        "價格類型": "最低價",
-                        "價格 (TWD)": min(all_raw_prices),
-                        "日期": today
-                    })
-                    prices.append({
-                        "飯店": hotel_data.get("name", hotel_name),
-                        "訂房通路": ota_name,
-                        "價格類型": "最高價",
-                        "價格 (TWD)": max(all_raw_prices),
-                        "日期": today
-                    })
+                # 只處理指定的四家 OTA
+                if any(target in ota_name for target in TARGET_OTAS):
+                    all_raw_prices = []
+                    find_all_prices(source, all_raw_prices)
+                    all_raw_prices = [p for p in all_raw_prices if p > 500]
+                    
+                    if all_raw_prices:
+                        prices.append({
+                            "飯店": hotel_data.get("name", hotel_name),
+                            "訂房通路": ota_name.upper(),
+                            "價格類型": "最低價",
+                            "價格 (TWD)": min(all_raw_prices),
+                            "日期": today
+                        })
+                        prices.append({
+                            "飯店": hotel_data.get("name", hotel_name),
+                            "訂房通路": ota_name.upper(),
+                            "價格類型": "最高價",
+                            "價格 (TWD)": max(all_raw_prices),
+                            "日期": today
+                        })
         return prices
     except Exception as e:
-        st.error(f"Scraper Error: {e}")
         return []
