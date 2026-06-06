@@ -1,4 +1,7 @@
 # hotels_config.py
 MONITORED_HOTELS = [
-    {"name": "台北圓山飯店", "data_id": "ChIJ8269V31mQjQR92d5T9hZ5tY"},
+    "合樂商務設計旅店 Taichung,
+    "夏都汽車旅館 Taichung", # 加上地名，確保搜尋精準
+    "金沙時尚汽車旅館 Taichung",
+    "風緻汽車旅館 Taichung"
 ]
