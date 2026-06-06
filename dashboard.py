@@ -3,32 +3,41 @@ import pandas as pd
 from scraper import get_hotel_prices
 from hotels_config import MONITORED_HOTELS
 
-st.set_page_config(page_title="收益管理系統", layout="wide")
-st.title("🏨 即時市場房型價格監控")
+# 介面設定
+st.set_page_config(page_title="客房價格比價系統", layout="wide")
+st.title("🏨 客房價格比價系統 (CompSet Analysis)")
 
-# 側邊欄：選擇
+# 1. 側邊欄選擇
 search_query = st.sidebar.text_input("搜尋飯店")
 filtered = [h for h in MONITORED_HOTELS if search_query.lower() in h.lower()]
-selected = st.sidebar.multiselect("勾選飯店", options=filtered)
+selected_hotels = st.sidebar.multiselect("監控飯店", options=filtered)
 
-if st.sidebar.button("獲取報價 (自動分類)"):
+if st.sidebar.button("執行比價"):
     all_data = []
-    for h in selected:
+    for h in selected_hotels:
         all_data.extend(get_hotel_prices(h))
     st.session_state['data'] = pd.DataFrame(all_data)
 
+# 2. 數據顯示
 if 'data' in st.session_state and not st.session_state['data'].empty:
     df = st.session_state['data']
     
-    # 房型選擇
-    all_rooms = ["標準房", "高級房", "豪華房", "套房", "雙床房", "大床房", "其他"]
-    selected_rooms = st.sidebar.multiselect("過濾房型", options=all_rooms, default=all_rooms)
+    # 核心房型篩選
+    room_options = ["Suite", "Deluxe", "Superior", "Standard"]
+    selected_rooms = st.sidebar.multiselect("篩選房型", options=room_options, default=room_options)
     
     display_df = df[df['room_type'].isin(selected_rooms)]
     
+    # 資料呈現 (表格)
     st.dataframe(display_df.rename(columns={
-        'hotel_name': '飯店', 'ota_source': '通路', 
-        'room_type': '房型', 'ota_price': '價格'
+        'hotel_name': '飯店', 
+        'ota_source': '訂房通路', 
+        'room_type': '房型級距', 
+        'ota_price': '價格 (TWD)'
     }), use_container_width=True)
+    
+    # 統計分析：各級距房價分佈
+    st.subheader("各級距房價平均")
+    st.bar_chart(display_df.groupby('room_type')['ota_price'].mean())
 else:
-    st.info("請選擇飯店並執行搜尋。")
+    st.info("請選擇飯店並執行比價以查看數據。")
