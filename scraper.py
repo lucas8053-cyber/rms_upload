@@ -31,14 +31,19 @@ def get_hotel_prices(hotel_name):
         prices = []
         hotel_data = data.get("hotels_results", [data])[0] if "hotels_results" in data else data
         
-        if "prices" in hotel_data:
+if "prices" in hotel_data:
             for source in hotel_data["prices"]:
                 ota_name = source.get("source")
+                # 嘗試抓取更多層級的資訊
                 rooms = source.get("rooms", [])
+                
+                # 若找不到 rooms，嘗試抓取是否有更細節的 description
+                if not rooms and "room_type" in source:
+                     rooms = [{"name": source.get("room_type")}]
                 
                 if rooms:
                     for room in rooms:
-                        price = room.get("rate_per_night", {}).get("extracted_lowest")
+                        price = room.get("rate_per_night", {}).get("extracted_lowest") or source.get("rate_per_night", {}).get("extracted_lowest")
                         if price:
                             prices.append({
                                 "hotel_name": hotel_data.get("name", hotel_name),
@@ -48,6 +53,7 @@ def get_hotel_prices(hotel_name):
                                 "date": today
                             })
                 else:
+                    # 最後防線：若真的都沒有房型資料，回傳基本價格
                     price_raw = source.get("rate_per_night", {}).get("extracted_lowest")
                     if price_raw:
                         prices.append({
