@@ -12,7 +12,6 @@ def get_hotel_prices(hotel_info):
     TARGET_OTAS = ["agoda", "hotels.com", "booking.com", "expedia"]
     url = "https://serpapi.com/search"
     
-    # 核心修改：使用 data_id 精確定位
     params = {
         "engine": "google_hotels",
         "data_id": hotel_info["data_id"],
@@ -65,5 +64,5 @@ def get_hotel_prices(hotel_info):
                             "日期": today
                         })
         return prices
-    except Exception:
+    except Exception as e:
         return []
