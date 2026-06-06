@@ -3,23 +3,28 @@ import streamlit as st
 from datetime import datetime, timedelta
 
 def get_hotel_prices(hotel_name):
+    # 搜尋日期設定為今天與明天
     today = datetime.now().strftime("%Y-%m-%d")
     tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
     
     api_key = st.secrets.get("SERPAPI_KEY")
-    if not api_key: return []
+    if not api_key: 
+        st.error("未設定 SERPAPI_KEY")
+        return []
 
+    # 指定你要監控的四大 OTA 通路 (轉為小寫以便後續比對)
     TARGET_OTAS = ["agoda", "hotels.com", "booking.com", "expedia"]
+    
     url = "https://serpapi.com/search"
     params = {
         "engine": "google_hotels",
-        "q": hotel_name,
+        "q": hotel_name, # 若後續改成 Place ID，這裡改為 data_id
         "check_in_date": today,
         "check_out_date": tomorrow,
         "api_key": api_key,
         "currency": "TWD",
         "hl": "en",
-        "gl": "us",
+        "gl": "tw", # 強制設定 gl=tw，讓搜尋結果更貼近台灣本地市場
         "location": "Taiwan"
     }
     
@@ -28,6 +33,7 @@ def get_hotel_prices(hotel_name):
         response.raise_for_status()
         data = response.json()
         
+        # 深度搜尋工具：遞迴遍歷整個 JSON 抓出所有 extracted_lowest
         def find_all_prices(obj, price_list):
             if isinstance(obj, dict):
                 if "extracted_lowest" in obj:
@@ -39,16 +45,24 @@ def get_hotel_prices(hotel_name):
                     find_all_prices(item, price_list)
 
         prices = []
-        hotel_data = data.get("hotels_results", [data])[0] if "hotels_results" in data else data
+        # 從 API 回傳的 hotels_results 抓取飯店資料
+        hotel_results = data.get("hotels_results", [])
+        if not hotel_results:
+            return []
+            
+        hotel_data = hotel_results[0]
         
+        # 遍歷 prices 區域
         if "prices" in hotel_data:
             for source in hotel_data["prices"]:
                 ota_name = source.get("source", "").lower()
                 
-                # 只處理指定的四家 OTA
+                # 篩選邏輯：只處理我們要的四大通路
                 if any(target in ota_name for target in TARGET_OTAS):
                     all_raw_prices = []
                     find_all_prices(source, all_raw_prices)
+                    
+                    # 過濾異常低價 (500元以下通常不是房價)
                     all_raw_prices = [p for p in all_raw_prices if p > 500]
                     
                     if all_raw_prices:
@@ -68,4 +82,5 @@ def get_hotel_prices(hotel_name):
                         })
         return prices
     except Exception as e:
+        # 在開發時方便除錯，你可以把這行改為 print(e)
         return []
