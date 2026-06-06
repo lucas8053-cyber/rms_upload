@@ -1,13 +1,14 @@
 # mapper.py
 def map_room_type(raw_name):
-    # 轉小寫處理
     name = str(raw_name).lower() if raw_name else ""
     
-    if any(x in name for x in ["suite"]): return "套房"
-    if any(x in name for x in ["deluxe", "premium"]): return "豪華房"
-    if any(x in name for x in ["superior"]): return "高級房"
-    if any(x in name for x in ["twin"]): return "雙床房"
-    if any(x in name for x in ["double", "king", "queen"]): return "大床房"
-    if any(x in name for x in ["standard", "classic", "single"]): return "標準房"
+    # 核心邏輯：四級分級制
+    if "suite" in name: return "Suite"
+    if "deluxe" in name: return "Deluxe"
+    if "superior" in name: return "Superior"
+    if "standard" in name or "classic" in name or "single" in name: return "Standard"
     
-    return "標準房" # 預設歸類，避免顯示空值
+    # 額外判斷：若名稱中有 Twin/Double 但不在上述級距，歸為 Standard
+    if "twin" in name or "double" in name: return "Standard"
+    
+    return "Standard" # 預設歸類，確保無遺漏
