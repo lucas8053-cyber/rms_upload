@@ -24,27 +24,34 @@ def get_hotel_prices(hotel_name):
     
     try:
         response = requests.get(url, params=params)
+        response.raise_for_status()
         data = response.json()
+        
+        # 深度搜尋函式：遞迴撈取 JSON 結構中所有名為 extracted_lowest 的價格
+        def find_all_prices(obj, price_list):
+            if isinstance(obj, dict):
+                if "extracted_lowest" in obj:
+                    price_list.append(int(obj["extracted_lowest"]))
+                for v in obj.values():
+                    find_all_prices(v, price_list)
+            elif isinstance(obj, list):
+                for item in obj:
+                    find_all_prices(item, price_list)
+
         prices = []
         hotel_data = data.get("hotels_results", [data])[0] if "hotels_results" in data else data
         
         if "prices" in hotel_data:
             for source in hotel_data["prices"]:
                 ota_name = source.get("source")
-                # 收集該通路下的所有價格
                 all_raw_prices = []
-                items = source.get("rooms", []) or source.get("rates", [])
                 
-                # 若有明細則收集所有價格，無明細則取單一價格
-                if items:
-                    for item in items:
-                        p = item.get("rate_per_night", {}).get("extracted_lowest")
-                        if p: all_raw_prices.append(int(p))
-                else:
-                    p = source.get("rate_per_night", {}).get("extracted_lowest")
-                    if p: all_raw_prices.append(int(p))
+                # 強制啟動深度搜尋
+                find_all_prices(source, all_raw_prices)
                 
-                # 加入最高與最低價記錄
+                # 過濾掉極端離群值 (例如 < 500 元可能非正常房價)
+                all_raw_prices = [p for p in all_raw_prices if p > 500]
+                
                 if all_raw_prices:
                     prices.append({
                         "飯店": hotel_data.get("name", hotel_name),
