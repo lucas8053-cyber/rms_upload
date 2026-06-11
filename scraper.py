@@ -3,55 +3,75 @@ import sqlite3
 import random
 import os
 import datetime
-from database_manager import save_scraped_data
+from database_manager import save_scraped_data, save_ota_offers, DB_PATH
+
+ROOM_TYPES = ["Standard", "Deluxe", "Suite"]
+OTA_NAMES = ["Booking.com", "Agoda", "Expedia", "Hotels.com"]
+
 
 def get_monitored_hotels():
-    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hotel_rms.db')
+    if not os.path.exists(DB_PATH):
+        return []
     conn = sqlite3.connect(DB_PATH)
-    hotels = pd.read_sql_query("SELECT hotel_name FROM monitored_hotels", conn)
-    conn.close()
-    return hotels['hotel_name'].tolist()
+    try:
+        df = pd.read_sql_query("SELECT hotel_name FROM monitored_hotels", conn)
+        return df['hotel_name'].tolist() if not df.empty else []
+    finally:
+        conn.close()
 
-def run_scraper():
-    competitors = get_monitored_hotels()
-    data = []
-    room_types = ["Standard", "Deluxe", "Suite"]
-    
-    today = datetime.date.today().isoformat()
-    ota_names = ["Booking.com", "Agoda", "Expedia", "Hotels.com"]
+
+def generate_hotel_data(hotel_name, date):
     offers = []
     aggregated = []
-    for hotel in competitors:
-        for room in room_types:
-            baseline = 2500 + (len(hotel) * 20)
-            room_markup = 800 if room == "Deluxe" else 1400 if room == "Suite" else 0
-            base_price = baseline + room_markup
-            # produce multiple ota offers with small variations
-            for idx, ota in enumerate(ota_names):
-                price = base_price + random.randint(-100, 100) + (idx * 10)
-                offers.append({
-                    "date": today,
-                    "hotel_name": hotel,
-                    "room_type": room,
-                    "ota_name": ota,
-                    "ota_price": price
-                })
-            # aggregated main record (use first OTA as primary)
-            primary_price = offers[-len(ota_names)]['ota_price'] if offers else base_price
-            aggregated.append({
-               "date": today,
-               "hotel_name": hotel,
-               "room_type": room,
-               "ota_price": primary_price,
-               "google_search_volume": random.randint(50, 100),
-               "is_main_room_type": 1 if room == "Deluxe" else 0,
-               "suggested_price": round(primary_price * 1.05, 0)
+    for room in ROOM_TYPES:
+        base_price = 2500 + len(hotel_name) * 12 + (300 if room == "Deluxe" else 700 if room == "Suite" else 0)
+        for idx, ota_name in enumerate(OTA_NAMES):
+            price = base_price + random.randint(-120, 120) + idx * 10
+            offers.append({
+                "date": date,
+                "hotel_name": hotel_name,
+                "room_type": room,
+                "ota_name": ota_name,
+                "ota_price": price
             })
 
+        primary_price = offers[-len(OTA_NAMES)]['ota_price'] if offers else base_price
+        aggregated.append({
+            "date": date,
+            "hotel_name": hotel_name,
+            "room_type": room,
+            "ota_price": primary_price,
+            "google_search_volume": random.randint(40, 120),
+            "is_main_room_type": 1 if room == "Suite" else 0,
+            "suggested_price": round(primary_price * 1.08, 0)
+        })
+
     offers_df = pd.DataFrame(offers)
-    agg_df = pd.DataFrame(aggregated)
-    from database_manager import save_ota_offers, save_scraped_data
-    if not offers_df.empty:
+    perf_df = pd.DataFrame(aggregated)
+    return offers_df, perf_df
+
+
+def run_scraper():
+    today = datetime.date.today().isoformat()
+    hotels = get_monitored_hotels()
+    if not hotels:
+        hotels = ["Taichung Grand Hotel", "Colorful Hotel", "Silk Place Taichung"]
+
+    all_offers = []
+    all_perf = []
+    for hotel in hotels:
+        offers_df, perf_df = generate_hotel_data(hotel, today)
+        all_offers.append(offers_df)
+        all_perf.append(perf_df)
+
+    if all_offers:
+        offers_df = pd.concat(all_offers, ignore_index=True)
         save_ota_offers(offers_df)
-    if not agg_df.empty:
-        save_scraped_data(agg_df)
+
+    if all_perf:
+        perf_df = pd.concat(all_perf, ignore_index=True)
+        save_scraped_data(perf_df)
+
+
+if __name__ == '__main__':
+    run_scraper()
