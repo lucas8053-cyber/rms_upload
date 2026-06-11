@@ -19,7 +19,11 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "Ensure you're authenticated with gh:"
-gh auth status || { Write-Host "Please run 'gh auth login' then re-run this script."; exit 1 }
+$null = gh auth status 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Please run 'gh auth login' then re-run this script.";
+    exit 1
+}
 
 # prompt required
 $dockerUser = Read-Host "DOCKERHUB_USERNAME"
