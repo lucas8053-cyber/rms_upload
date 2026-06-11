@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+hotel_rms.db
+*.db
+.env
+.env.*
+.vscode
+.DS_Store

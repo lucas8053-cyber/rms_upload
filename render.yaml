@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: rms-upload
+    env: docker
+    dockerfilePath: Dockerfile
+    branch: main
+    plan: starter
+    env:
+      PORT: "8501"
